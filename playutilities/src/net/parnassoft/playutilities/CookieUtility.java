@@ -10,12 +10,12 @@ import play.mvc.Http;
 
 public class CookieUtility {
 
-    public static void writeCookie(String cookieName, String cookieValue) {
+    public static void createCookie(String cookieName, String cookieValue) {
         Http.Response response = Http.Response.current();
         response.setCookie(cookieName, cookieValue);
     }
 
-    public static void writeCookie(String cookieName, String cookieValue, String time) {
+    public static void createCookie(String cookieName, String cookieValue, String time) {
         Http.Response response = Http.Response.current();
         response.setCookie(cookieName, cookieValue, time); // TODO: What if time is incorrect???
     }
@@ -39,7 +39,7 @@ public class CookieUtility {
         return null;
     }
 
-    public static void removeCookie(String cookieName) {
+    public static void deleteCookie(String cookieName) {
         Http.Response response = Http.Response.current();
         response.removeCookie(cookieName);
     }

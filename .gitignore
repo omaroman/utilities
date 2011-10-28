@@ -1,0 +1,8 @@
+*.iml
+/dist/
+/out/
+*.class
+*.swp
+*.log
+/playutilities/dist/
+/.idea

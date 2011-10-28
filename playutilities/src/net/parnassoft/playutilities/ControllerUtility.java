@@ -29,6 +29,11 @@ public class ControllerUtility {
         return null;
     }
 
+    public static boolean hasActionAnnotation(Class <? extends Annotation> clazz) {
+        Method m = (Method) ActionInvoker.getActionMethod(Http.Request.current().action)[1];
+        return m.isAnnotationPresent(clazz);
+    }
+
     /**
      * Retrieve annotation for the controller class
      * @param clazz The annotation class
@@ -39,6 +44,10 @@ public class ControllerUtility {
             return getControllerClass().getAnnotation(clazz);
         }
         return null;
+    }
+
+    public static boolean hasControllerAnnotation(Class <? extends Annotation> clazz) {
+        return getControllerClass().isAnnotationPresent(clazz);
     }
 
     /**
@@ -55,6 +64,17 @@ public class ControllerUtility {
             c = c.getSuperclass();
         }
         return null;
+    }
+
+    public static boolean hasControllerInheritedAnnotation(Class <? extends Annotation> clazz) {
+        Class<?> c = getControllerClass();
+        while (!c.equals(Object.class)) {
+            if (c.isAnnotationPresent(clazz)) {
+                return true;
+            }
+            c = c.getSuperclass();
+        }
+        return false;
     }
 
     /**
