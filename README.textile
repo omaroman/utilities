@@ -8,6 +8,10 @@ h2. Contribution
 
 If you develop a utility you are encourage to upload it in order to improve this API.
 
+h2. TODO
+
+Automate the process of building the jar
+
 h2. Credits
 
 Author: Omar O. Román
