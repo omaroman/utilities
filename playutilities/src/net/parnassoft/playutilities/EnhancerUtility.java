@@ -7,16 +7,12 @@
 package net.parnassoft.playutilities;
 
 import javassist.*;
-import javassist.Modifier;
-import javassist.bytecode.AccessFlag;
 import net.parnassoft.playutilities.annotations.Interceptor;
 import org.apache.commons.lang.StringUtils;
-import play.Logger;
 import play.db.jpa.GenericModel;
 
 import javax.persistence.*;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -214,6 +210,22 @@ public class EnhancerUtility {
                EnhancerUtility.hasAnnotation(ctField, OneToMany.class.getName()) ||
                EnhancerUtility.hasAnnotation(ctField, OneToOne.class.getName());
     }
+    
+    public static boolean hasField(CtClass ctClass, String fieldName) {
+        try {
+            ctClass.getDeclaredField(fieldName);
+            return true;
+        } catch (NotFoundException e) {
+            return false;
+        }
+
+//        for (CtField ctField : ctClass.getDeclaredFields()) {
+//            if (ctField.getName().equals(fieldName)) {
+//                return true;
+//            }
+//        }
+//        return false;
+    }
 
     public static boolean hasGetterMethod(CtClass ctClass, CtField ctField) throws ClassNotFoundException, NotFoundException {
         // Property name
@@ -249,17 +261,31 @@ public class EnhancerUtility {
         return false;
     }
 
-    public static CtMethod getMethodAnnotatedWith(CtClass ctClass, String annot) {
+    public static CtMethod getMethodAnnotatedWith(CtClass ctClass, String annotation) {
         for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
             try {
-                if (EnhancerUtility.hasAnnotation(ctMethod, annot)) {
-                    return ctMethod;
+                if (EnhancerUtility.hasAnnotation(ctMethod, annotation)) {
+                    return ctMethod;    // returns the first found method
                 }
             } catch (ClassNotFoundException e) {
                 // Do Nothing...
             }
         }
         return null;
+    }
+
+    public static List<CtMethod> getMethodsAnnotatedWith(CtClass ctClass, String annotation) {
+        List<CtMethod> ctMethods = new ArrayList<CtMethod>();
+        for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
+            try {
+                if (EnhancerUtility.hasAnnotation(ctMethod, annotation)) {
+                    ctMethods.add(ctMethod);
+                }
+            } catch (ClassNotFoundException e) {
+                // Do Nothing...
+            }
+        }
+        return ctMethods;
     }
 
     public static Class methodReturnType(CtMethod ctMethod) throws ClassNotFoundException {
