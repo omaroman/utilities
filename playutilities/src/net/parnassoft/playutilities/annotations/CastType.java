@@ -1,7 +1,7 @@
 /**
  * Author: OMAROMAN
- * Date: 10/20/11
- * Time: 12:32 PM
+ * Date: 2/16/12
+ * Time: 4:08 PM
  */
 
 package net.parnassoft.playutilities.annotations;
@@ -11,7 +11,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.TYPE})
+@Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Interceptor {
+public @interface CastType {
+    public Class type();
 }

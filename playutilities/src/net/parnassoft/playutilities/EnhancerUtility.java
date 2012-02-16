@@ -10,11 +10,12 @@ import javassist.*;
 import net.parnassoft.playutilities.annotations.Interceptor;
 import org.apache.commons.lang.StringUtils;
 import play.db.jpa.GenericModel;
+import play.db.jpa.JPABase;
+import play.db.jpa.Model;
 
 import javax.persistence.*;
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class EnhancerUtility {
 
@@ -24,11 +25,15 @@ public class EnhancerUtility {
 
     public static boolean isAModel(ClassPool classPool, CtClass ctClass) throws Exception {
         // Only enhance model classes.
-        return ctClass.subtypeOf(classPool.get(play.db.jpa.JPABase.class.getName()));  //"play.db.jpa.JPABase"
+        return ctClass.subtypeOf(classPool.get(play.db.jpa.JPABase.class.getName()));
     }
 
     public static boolean isAnEntity(CtClass ctClass) throws Exception {
         return hasAnnotation(ctClass, Entity.class.getName());    // "javax.persistence.Entity"
+    }
+
+    public static boolean isMappedSuperclass(CtClass ctClass) throws Exception {
+        return hasAnnotation(ctClass, MappedSuperclass.class.getName());    // "javax.persistence.MappedSuperclass"
     }
 
     public static boolean isAnInterceptor (CtClass ctClass) throws Exception {
@@ -52,61 +57,32 @@ public class EnhancerUtility {
         return (Modifier.isPublic(ctMethod.getModifiers()) && Modifier.isStatic(ctMethod.getModifiers()) && ctMethod.getReturnType().equals(CtClass.voidType));
     }
 
-    /**
-     * Test if a class has the provided annotation
-     * @param ctClass the javassist class representation
-     * @param annotation fully qualified name of the annotation class eg."javax.persistence.Entity"
-     * @return true if class has the annotation
-     * @throws java.lang.ClassNotFoundException -
-     */
-    public static boolean hasAnnotation(CtClass ctClass, String annotation) throws ClassNotFoundException {
-//        for (Object object : ctClass.getAvailableAnnotations()) {
-//            Annotation ann = (Annotation) object;
-//            if (ann.annotationType().getName().equals(annotation)) {
-//                return true;
-//            }
-//        }
-//        return false;
-        return hasAnnotation(annotation, ctClass.getAvailableAnnotations());
+    public static boolean hasAnnotation(Object[] annotations, Class<? extends Annotation> annotation) {
+        for (Object object : annotations) {
+            Annotation ann = (Annotation) object;
+            if (ann.annotationType().getName().equals(annotation.getName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /**
-	 * Test if a method has the provided annotation
-	 * @param ctMethod the javassist method representation
-	 * @param annotation fully qualified name of the annotation class eg."javax.persistence.Entity"
-	 * @return true if field has the annotation
-	 * @throws java.lang.ClassNotFoundException -
-	 */
-    public static boolean hasAnnotation(CtMethod ctMethod, String annotation) throws ClassNotFoundException {
-//        for (Object object : ctMethod.getAvailableAnnotations()) {
-//            Annotation ann = (Annotation) object;
-//            if (ann.annotationType().getName().equals(annotation)) {
-//                return true;
-//            }
-//        }
-//        return false;
-        return hasAnnotation(annotation, ctMethod.getAvailableAnnotations());
+    public static boolean hasAnnotation(CtClass ctClass, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        // Test if a class has the provided annotation
+        return hasAnnotation(ctClass.getAvailableAnnotations(), annotation);
     }
 
-    /**
-     * Test if a field has the provided annotation
-     * @param ctField the javassist field representation
-     * @param annotation fully qualified name of the annotation class eg."javax.persistence.Entity"
-     * @return true if field has the annotation
-     * @throws java.lang.ClassNotFoundException -
-     */
-    public static boolean hasAnnotation(CtField ctField, String annotation) throws ClassNotFoundException {
-//        for (Object object : ctField.getAvailableAnnotations()) {
-//            Annotation ann = (Annotation) object;
-//            if (ann.annotationType().getName().equals(annotation)) {
-//                return true;
-//            }
-//        }
-//        return false;
-        return hasAnnotation(annotation, ctField.getAvailableAnnotations());
+    public static boolean hasAnnotation(CtMethod ctMethod, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        // Test if a method has the provided annotation
+        return hasAnnotation(ctMethod.getAvailableAnnotations(), annotation);
     }
 
-    private static boolean hasAnnotation(String annotation, Object... annotations) {
+    public static boolean hasAnnotation(CtField ctField, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        // Test if a field has the provided annotation
+        return hasAnnotation(ctField.getAvailableAnnotations(), annotation);
+    }
+    
+    public static boolean hasAnnotation(Object[] annotations, String annotation) {
         for (Object object : annotations) {
             Annotation ann = (Annotation) object;
             if (ann.annotationType().getName().equals(annotation)) {
@@ -116,7 +92,22 @@ public class EnhancerUtility {
         return false;
     }
 
-    // TODO: New methods
+    public static boolean hasAnnotation(CtClass ctClass, String annotation) throws ClassNotFoundException {
+        // Test if a class has the provided annotation
+        return hasAnnotation(ctClass.getAvailableAnnotations(), annotation);
+    }
+
+    public static boolean hasAnnotation(CtMethod ctMethod, String annotation) throws ClassNotFoundException {
+        // Test if a method has the provided annotation
+        return hasAnnotation(ctMethod.getAvailableAnnotations(), annotation);
+    }
+
+    public static boolean hasAnnotation(CtField ctField, String annotation) throws ClassNotFoundException {
+        // Test if a field has the provided annotation
+        return hasAnnotation(ctField.getAvailableAnnotations(), annotation);
+    }
+
+
 
     public static List<CtField> getAllPersistentFields(CtClass ctClass) {
         List<CtField> fields = new ArrayList<CtField>();
@@ -218,13 +209,6 @@ public class EnhancerUtility {
         } catch (NotFoundException e) {
             return false;
         }
-
-//        for (CtField ctField : ctClass.getDeclaredFields()) {
-//            if (ctField.getName().equals(fieldName)) {
-//                return true;
-//            }
-//        }
-//        return false;
     }
 
     public static boolean hasGetterMethod(CtClass ctClass, CtField ctField) throws ClassNotFoundException, NotFoundException {
@@ -341,23 +325,169 @@ public class EnhancerUtility {
         }
     }
 
-    public static List<CtClass> mappedSuperClassesUpToModel(CtClass lastChildClass) throws NotFoundException, ClassNotFoundException {
+    public static List<CtClass> mappedSuperClassesUpToGenericModel(CtClass lastChildClass) throws NotFoundException, ClassNotFoundException {
         List<CtClass> mappedSupperClasses = new ArrayList<CtClass>();
         CtClass superClass = lastChildClass;
 
         while (superClass.getSuperclass() != null) {
             superClass = superClass.getSuperclass();
-            if (superClass.getName().equals(GenericModel.class.getName())) {
+            if (superClass.getName().equals(JPABase.class.getName())) {
                 break;
             }
-            if (EnhancerUtility.hasAnnotation(superClass, MappedSuperclass.class.getName())) {
+            if (EnhancerUtility.hasAnnotation(superClass, MappedSuperclass.class)) {
                 mappedSupperClasses.add(superClass);
             } else {
+                // Shall never reach this line
                 break;
             }
         }
 
+        mappedSupperClasses.add(0, lastChildClass);    // add at first place
+        Collections.reverse(mappedSupperClasses); // Reverse the order of fields
+
         return mappedSupperClasses;
+    }
+
+    public static Map.Entry<CtClass, CtField> modelHavingFieldAnnotatedWithId(List<CtClass> mappedSupperClasses) throws ClassNotFoundException, NotFoundException {
+        for (CtClass ctClass : mappedSupperClasses) {
+            for(CtField ctField : ctClass.getFields()) {
+                if (hasAnnotation(ctField, Id.class)) {
+                    return new AbstractMap.SimpleEntry<CtClass, CtField>(ctClass, ctField);
+                }
+            }
+        }
+        return null;
+    }
+
+    public static Map.Entry<CtClass, CtField> modelHavingFieldAnnotatedWithId(CtClass lastChildClass) throws ClassNotFoundException, NotFoundException {
+        return modelHavingFieldAnnotatedWithId(mappedSuperClassesUpToGenericModel(lastChildClass));
+    }
+
+    public static boolean inheritsFromClass(CtClass child, Class parent) throws NotFoundException {
+//        List<CtClass> mappedSupperClasses = new ArrayList<CtClass>();
+        CtClass superClass = child;
+
+        while (superClass.getSuperclass() != null) {
+            superClass = superClass.getSuperclass();
+            if (superClass.getName().equals(parent.getName())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
+    public static boolean inheritsFromModel(CtClass child) throws NotFoundException {
+        return inheritsFromClass(child, Model.class);
+    }
+
+    public static boolean inheritsFromGenericModel(CtClass child) throws NotFoundException {
+        return inheritsFromClass(child, GenericModel.class);
+    }
+
+    /**
+     * Retrieve annotation for the controller class
+     * @param annotations - An array of objects representing the annotations
+     * @param annotation -
+     * @return Annotation object or null if not found
+     */
+    public static Annotation getAnnotation(Object[] annotations, Class<? extends Annotation> annotation) {
+        for (Object object : annotations) {
+            Annotation ann = (Annotation) object;
+            if (ann.annotationType().getName().equals(annotation.getName())) {
+                return ann;
+            }
+        }
+        return null;   
+    }
+
+    public static Annotation getAnnotation(CtClass ctClass, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        return getAnnotation(ctClass.getAnnotations(), annotation);
+    }
+
+    public static Annotation getAnnotation(CtMethod ctMethod, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        return getAnnotation(ctMethod.getAnnotations(), annotation);
+    }
+
+    public static Annotation getAnnotation(CtField ctField, Class<? extends Annotation> annotation) throws ClassNotFoundException {
+        return getAnnotation(ctField.getAnnotations(), annotation);
+    }
+
+    public static Annotation getAnnotation(Object[] annotations, String annotation) {
+        for (Object object : annotations) {
+            Annotation ann = (Annotation) object;
+            if (ann.annotationType().getName().equals(annotation)) {
+                return ann;
+            }
+        }
+        return null;
+    }
+
+    // -----
+
+    public static Annotation getAnnotation(CtClass ctClass, String annotation) throws ClassNotFoundException {
+        return getAnnotation(ctClass.getAnnotations(), annotation);
+    }
+
+    public static Annotation getAnnotation(CtMethod ctMethod, String annotation) throws ClassNotFoundException {
+        return getAnnotation(ctMethod.getAnnotations(), annotation);
+    }
+
+    public static Annotation getAnnotation(CtField ctField, String annotation) throws ClassNotFoundException {
+        return getAnnotation(ctField.getAnnotations(), annotation);
+    }
+
+    public static boolean hasModelIdFieldWithinInheritance(CtClass lastChildClass) throws ClassNotFoundException, NotFoundException {
+        return hasModelFieldWithinInheritance(lastChildClass, "id");
+    }
+
+    public static boolean hasModelIdFieldWithinInheritance(List<CtClass> mappedSupperClasses) throws ClassNotFoundException, NotFoundException {
+        return hasModelFieldWithinInheritance(mappedSupperClasses, "id");
+    }
+
+    public static boolean hasModelFieldWithinInheritance(CtClass ctClass, String fieldName) throws ClassNotFoundException, NotFoundException {
+        List<CtClass> mappedSuperClasses = mappedSuperClassesUpToGenericModel(ctClass);
+        return hasModelFieldWithinInheritance(mappedSuperClasses, fieldName);
+    }
+    
+    public static boolean hasModelFieldWithinInheritance(List<CtClass> mappedSupperClasses, String fieldName) {
+        boolean result = true;
+        for (CtClass ctClass : mappedSupperClasses) {
+            try {
+                ctClass.getDeclaredField(fieldName);
+            } catch (NotFoundException e) {
+                result = false;
+            }
+        }
+        return result;
+    }
+
+    public static boolean hasModelFieldAnnotatedWithIdWithinInheritance(CtClass lastChildClass) throws ClassNotFoundException, NotFoundException {
+        Map.Entry<CtClass, CtField> result = modelHavingFieldAnnotatedWithId(lastChildClass);
+        return result != null;
+    }
+
+    public static boolean hasModelFieldAnnotatedWithIdWithinInheritance(List<CtClass> mappedSupperClasses) throws ClassNotFoundException, NotFoundException {
+        Map.Entry<CtClass, CtField> result = modelHavingFieldAnnotatedWithId(mappedSupperClasses);
+        return result != null;
+    }
+
+    public static boolean hasFieldAnnotatedWithId(CtClass ctClass) throws ClassNotFoundException {
+        for(CtField ctField : ctClass.getFields()) {
+            if (hasAnnotation(ctField, Id.class)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static CtField getFieldAnnotatedWithId(CtClass ctClass) throws ClassNotFoundException {
+        for(CtField ctField : ctClass.getFields()) {
+            if (hasAnnotation(ctField, Id.class)) {
+                return ctField;
+            }
+        }
+        return null;
     }
 }
 

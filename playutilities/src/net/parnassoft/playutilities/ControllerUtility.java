@@ -6,7 +6,6 @@
 
 package net.parnassoft.playutilities;
 
-import play.Logger;
 import play.mvc.ActionInvoker;
 import play.mvc.Controller;
 import play.mvc.Http;
